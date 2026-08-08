@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.vite
+
+# Local Basketball Monster exports — personal data, not for the repo.
+sample/*
+!sample/README.txt

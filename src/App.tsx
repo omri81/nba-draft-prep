@@ -1,0 +1,374 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import { restrictToParentElement, restrictToVerticalAxis } from '@dnd-kit/modifiers'
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import type { AppData, Player, Prefs } from './types'
+import { parseWorkbook } from './lib/parse'
+import { normalizeName } from './lib/normalize'
+import {
+  EMPTY_DATA,
+  DEFAULT_PREFS,
+  clearAll,
+  loadData,
+  loadPrefs,
+  makeBackup,
+  mergeImport,
+  parseBackup,
+  saveData,
+  saveDrafted,
+  saveOrder,
+  savePrefs,
+} from './lib/storage'
+import { PlayerRow } from './components/PlayerRow'
+import { PlayerDetail } from './components/PlayerDetail'
+import { Toolbar } from './components/Toolbar'
+
+interface Ranked {
+  player: Player
+  rank: number
+}
+
+export default function App() {
+  const [data, setData] = useState<AppData>(() => loadData())
+  const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs())
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [notice, setNotice] = useState<{ text: string; bad: boolean } | null>(null)
+  const setError = useCallback((text: string | null) => setNotice(text ? { text, bad: true } : null), [])
+  const setInfo = useCallback((text: string) => setNotice({ text, bad: false }), [])
+
+  const xlsxInput = useRef<HTMLInputElement>(null)
+  const jsonInput = useRef<HTMLInputElement>(null)
+
+  const byId = useMemo(() => new Map(data.players.map((p) => [p.id, p])), [data.players])
+  const draftedSet = useMemo(() => new Set(data.drafted), [data.drafted])
+
+  /** Master board: my custom order, rank = position in that order. */
+  const ranked = useMemo<Ranked[]>(() => {
+    const out: Ranked[] = []
+    data.order.forEach((id, i) => {
+      const player = byId.get(id)
+      if (player) out.push({ player, rank: i + 1 })
+    })
+    return out
+  }, [data.order, byId])
+
+  const visible = useMemo<Ranked[]>(() => {
+    const q = query.trim().toLowerCase()
+    let list = ranked
+
+    if (q) {
+      // Match the normalized id too, so typing "doncic" on a phone keyboard
+      // still finds "Luka Dončić".
+      const nq = normalizeName(q)
+      list = list.filter(
+        (r) => r.player.name.toLowerCase().includes(q) || (!!nq && r.player.id.includes(nq)),
+      )
+    }
+    if (prefs.positions.length > 0) {
+      list = list.filter((r) => r.player.pos.some((p) => prefs.positions.includes(p)))
+    }
+    if (prefs.hideDrafted) {
+      list = list.filter((r) => !draftedSet.has(r.player.id))
+    } else {
+      // Drafted players sink to the bottom instead of vanishing, so I can still
+      // see who went and un-draft a mis-tap.
+      const undrafted = list.filter((r) => !draftedSet.has(r.player.id))
+      const drafted = list.filter((r) => draftedSet.has(r.player.id))
+      list = undrafted.length === list.length ? list : [...undrafted, ...drafted]
+    }
+    return list
+  }, [ranked, query, prefs.positions, prefs.hideDrafted, draftedSet])
+
+  const visibleIds = useMemo(() => visible.map((r) => r.player.id), [visible])
+  const remaining = ranked.length - data.drafted.length
+  const hasNew = useMemo(() => data.players.some((p) => p.isNew), [data.players])
+
+  const selected = selectedId ? ranked.find((r) => r.player.id === selectedId) : undefined
+
+  // ---- persistence helpers -------------------------------------------------
+
+  const persist = useCallback((next: AppData) => {
+    setData(next)
+    try {
+      saveData(next)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }, [])
+
+  const updatePrefs = useCallback((patch: (prev: Prefs) => Partial<Prefs>) => {
+    // Functional form on purpose: two quick chip taps must not read the same
+    // stale `prefs` and drop one of the updates.
+    setPrefs((prev) => {
+      const next = { ...prev, ...patch(prev) }
+      try {
+        savePrefs(next)
+      } catch {
+        /* prefs are cosmetic — never block the draft over them */
+      }
+      return next
+    })
+  }, [])
+
+  // ---- drafted -------------------------------------------------------------
+
+  const toggleDrafted = useCallback((id: string) => {
+    setData((prev) => {
+      const has = prev.drafted.includes(id)
+      const drafted = has ? prev.drafted.filter((d) => d !== id) : [...prev.drafted, id]
+      try {
+        saveDrafted(drafted)
+      } catch (err) {
+        setError((err as Error).message)
+      }
+      return { ...prev, drafted }
+    })
+  }, [])
+
+  // ---- reordering ----------------------------------------------------------
+
+  const sensors = useSensors(
+    // A dedicated handle (touch-action: none) means we can activate on a short
+    // drag without ever stealing a scroll gesture from the list.
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const onDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event
+      if (!over || active.id === over.id) return
+      const activeId = String(active.id)
+      const overId = String(over.id)
+      // Dropping onto a drafted row would mean landing at its master-order
+      // slot, which is not where it appears on screen. Ignore it.
+      if (draftedSet.has(overId)) return
+
+      setData((prev) => {
+        const from = prev.order.indexOf(activeId)
+        const to = prev.order.indexOf(overId)
+        if (from === -1 || to === -1) return prev
+        const order = arrayMove(prev.order, from, to)
+        try {
+          saveOrder(order)
+        } catch (err) {
+          setError((err as Error).message)
+        }
+        return { ...prev, order }
+      })
+    },
+    [draftedSet],
+  )
+
+  // ---- detail view + back button ------------------------------------------
+
+  const openPlayer = useCallback((id: string) => {
+    setSelectedId(id)
+    window.history.pushState({ detail: id }, '')
+  }, [])
+
+  const closeDetail = useCallback(() => {
+    if (window.history.state?.detail) window.history.back()
+    else setSelectedId(null)
+  }, [])
+
+  useEffect(() => {
+    const onPop = () => setSelectedId(null)
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
+
+  // ---- import / export -----------------------------------------------------
+
+  const onXlsxPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-picking the same file
+    if (!file) return
+    setBusy('Parsing projections…')
+    setError(null)
+    try {
+      const buf = await file.arrayBuffer()
+      const { players, skipped } = await parseWorkbook(buf)
+      const wasEmpty = data.players.length === 0
+      const added = players.filter((p) => !byId.has(p.id)).length
+      const next = mergeImport(data, players, file.name)
+      persist(next)
+      setBusy(null)
+      setInfo(
+        wasEmpty
+          ? `Imported ${players.length} players.` + (skipped ? ` ${skipped} rows skipped.` : '')
+          : `Imported ${players.length} players · ${added} new · your order was kept` +
+              (skipped ? ` · ${skipped} rows skipped` : ''),
+      )
+    } catch (err) {
+      setBusy(null)
+      setError((err as Error).message)
+    }
+  }
+
+  const onExportData = () => {
+    const blob = new Blob([JSON.stringify(makeBackup(data, prefs), null, 2)], {
+      type: 'application/json',
+    })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `draft-prep-${new Date().toISOString().slice(0, 10)}.json`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  const onJsonPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    try {
+      const restored = parseBackup(await file.text())
+      persist(restored.data)
+      setPrefs(restored.prefs)
+      savePrefs(restored.prefs)
+      setInfo(`Restored ${restored.data.players.length} players from backup.`)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }
+
+  const clearNew = () => {
+    persist({ ...data, players: data.players.map((p) => ({ ...p, isNew: false })) })
+  }
+
+  const resetDrafted = () => {
+    if (!data.drafted.length) return
+    if (!confirm('Un-draft everyone?')) return
+    persist({ ...data, drafted: [] })
+  }
+
+  const resetAll = () => {
+    if (!confirm('Erase projections, custom order and drafted flags? This cannot be undone.')) return
+    clearAll()
+    setData(EMPTY_DATA)
+    setPrefs(DEFAULT_PREFS)
+    setQuery('')
+  }
+
+  // ---- render --------------------------------------------------------------
+
+  return (
+    <div className="app">
+      <Toolbar
+        remaining={remaining}
+        total={ranked.length}
+        query={query}
+        onQuery={setQuery}
+        positions={prefs.positions}
+        onTogglePosition={(pos) =>
+          updatePrefs((p) => ({
+            positions: p.positions.includes(pos)
+              ? p.positions.filter((x) => x !== pos)
+              : [...p.positions, pos],
+          }))
+        }
+        hideDrafted={prefs.hideDrafted}
+        onToggleHideDrafted={() => updatePrefs((p) => ({ hideDrafted: !p.hideDrafted }))}
+        onImportProjections={() => xlsxInput.current?.click()}
+        onExportData={onExportData}
+        onImportData={() => jsonInput.current?.click()}
+        onClearNew={clearNew}
+        onResetDrafted={resetDrafted}
+        onResetAll={resetAll}
+        hasNew={hasNew}
+        sourceFile={data.sourceFile}
+        importedAt={data.importedAt}
+      />
+
+      {(busy || notice) && (
+        <div className={`notice${!busy && notice?.bad ? ' notice--error' : ''}`}>
+          <span>{busy ?? notice?.text}</span>
+          {!busy && (
+            <button type="button" onClick={() => setNotice(null)} aria-label="Dismiss">
+              ✕
+            </button>
+          )}
+        </div>
+      )}
+
+      <main className="board">
+        {ranked.length === 0 ? (
+          <div className="empty">
+            <h1>Draft board</h1>
+            <p>Import your Basketball Monster projections to get started.</p>
+            <button type="button" className="btn" onClick={() => xlsxInput.current?.click()}>
+              Import projections (.xlsx)
+            </button>
+            <p className="empty__hint">
+              Already have a backup? Use <strong>⋯ → Import data</strong>.
+            </p>
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="empty">
+            <p>No players match that filter.</p>
+          </div>
+        ) : (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={onDragEnd}
+            modifiers={[restrictToVerticalAxis, restrictToParentElement]}
+          >
+            <SortableContext items={visibleIds} strategy={verticalListSortingStrategy}>
+              <ul className="list">
+                {visible.map(({ player, rank }) => (
+                  <PlayerRow
+                    key={player.id}
+                    player={player}
+                    rank={rank}
+                    drafted={draftedSet.has(player.id)}
+                    sortable={!draftedSet.has(player.id)}
+                    onOpen={openPlayer}
+                    onToggleDrafted={toggleDrafted}
+                  />
+                ))}
+              </ul>
+            </SortableContext>
+          </DndContext>
+        )}
+      </main>
+
+      {selected && (
+        <PlayerDetail
+          player={selected.player}
+          rank={selected.rank}
+          drafted={draftedSet.has(selected.player.id)}
+          onBack={closeDetail}
+          onToggleDrafted={toggleDrafted}
+        />
+      )}
+
+      <input
+        ref={xlsxInput}
+        type="file"
+        accept=".xlsx,.xls,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        hidden
+        onChange={onXlsxPicked}
+      />
+      <input ref={jsonInput} type="file" accept=".json,application/json" hidden onChange={onJsonPicked} />
+    </div>
+  )
+}

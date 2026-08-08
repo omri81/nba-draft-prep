@@ -1,0 +1,692 @@
+:root {
+  --bg: #0b0d10;
+  --surface: #14181e;
+  --surface-2: #1b2028;
+  --line: #262d37;
+  --text: #e8edf4;
+  --dim: #8b95a4;
+  --dimmer: #5d6674;
+  --accent: #f2762e;
+  --accent-dim: #7a3d17;
+  --good: #3fb27f;
+  --bad: #e0574a;
+  --radius: 10px;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.35 -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, sans-serif;
+  overscroll-behavior: none;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+
+/* ---------- toolbar ---------- */
+
+.toolbar {
+  flex: none;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: calc(env(safe-area-inset-top) + 8px) 10px 8px;
+  padding-left: calc(env(safe-area-inset-left) + 10px);
+  padding-right: calc(env(safe-area-inset-right) + 10px);
+}
+
+.toolbar__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.toolbar__title {
+  font-size: 15px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.toolbar__title strong {
+  font-size: 20px;
+  color: var(--text);
+  margin-right: 2px;
+}
+
+.toolbar__sub {
+  margin-left: 4px;
+  font-size: 13px;
+  color: var(--dimmer);
+}
+
+.toolbar__actions {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.toolbar__row {
+  display: flex;
+  gap: 6px;
+}
+
+.toolbar__row + .toolbar__row {
+  margin-top: 8px;
+}
+
+.toolbar__positions {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.toolbar__positions::-webkit-scrollbar {
+  display: none;
+}
+
+.pill {
+  flex: none;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 17px;
+  background: var(--surface-2);
+  color: var(--dim);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.pill--on {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: #ffd9bf;
+}
+
+.pill--icon {
+  width: 34px;
+  padding: 0;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.chip {
+  flex: 1;
+  min-height: 34px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.chip--on {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: #ffd9bf;
+}
+
+.search {
+  position: relative;
+  flex: 1;
+}
+
+.search input {
+  width: 100%;
+  min-height: 36px;
+  padding: 0 32px 0 12px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  -webkit-appearance: none;
+  appearance: none;
+  /* 16px keeps iOS Safari from zooming the viewport on focus. */
+  font-size: 16px;
+}
+
+.search input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.search__clear {
+  position: absolute;
+  right: 2px;
+  top: 0;
+  bottom: 0;
+  width: 30px;
+  color: var(--dimmer);
+}
+
+/* ---------- menu ---------- */
+
+.menu {
+  position: absolute;
+  top: 40px;
+  right: 0;
+  z-index: 30;
+  min-width: 230px;
+  padding: 6px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.6);
+}
+
+.menu button {
+  display: block;
+  width: 100%;
+  padding: 11px 10px;
+  text-align: left;
+  border-radius: 6px;
+  font-size: 15px;
+}
+
+.menu button:active {
+  background: var(--line);
+}
+
+.menu button.danger {
+  color: var(--bad);
+}
+
+.menu hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 6px 4px;
+}
+
+.menu__note {
+  margin: 6px 10px 4px;
+  font-size: 11px;
+  color: var(--dimmer);
+  word-break: break-all;
+}
+
+/* ---------- notice ---------- */
+
+.notice {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  background: #14261f;
+  color: #b7e6cf;
+  border-bottom: 1px solid var(--line);
+}
+
+.notice--error {
+  background: #2a1512;
+  color: #ffc3bb;
+}
+
+.notice span {
+  flex: 1;
+}
+
+.notice button {
+  color: inherit;
+  opacity: 0.7;
+  padding: 4px 6px;
+}
+
+/* ---------- board ---------- */
+
+.board {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 58px;
+  padding-left: max(env(safe-area-inset-left), 4px);
+  padding-right: max(env(safe-area-inset-right), 4px);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg);
+  touch-action: manipulation;
+}
+
+.row.is-drafted {
+  opacity: 0.34;
+}
+
+.row.is-dragging {
+  position: relative;
+  z-index: 10;
+  background: var(--surface-2);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.55);
+  opacity: 0.95;
+}
+
+.row__check {
+  flex: none;
+  width: 34px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.row__check-box {
+  width: 21px;
+  height: 21px;
+  border-radius: 6px;
+  border: 1.5px solid var(--dimmer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.is-drafted .row__check-box {
+  background: var(--good);
+  border-color: var(--good);
+  color: #06120d;
+}
+
+.row__main {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+}
+
+.row__rank {
+  flex: none;
+  width: 22px;
+  text-align: right;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dimmer);
+}
+
+/* NBA headshots are 1040x760 with the player small and centred, so the image
+   is scaled up inside a fixed box and offset to frame the face. */
+.shot {
+  flex: none;
+  display: block;
+  overflow: hidden;
+  background: var(--surface-2);
+}
+
+.shot img {
+  display: block;
+  width: 220%;
+  height: auto;
+  margin-left: -60%;
+  margin-top: -2%;
+}
+
+.shot img.is-placeholder {
+  width: 100%;
+  margin: 0;
+}
+
+.shot--row {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+}
+
+.row__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.row__line1 {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.row__name {
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.row__meta {
+  margin-left: auto;
+  flex: none;
+  font-size: 11px;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.row__stats {
+  display: flex;
+  gap: 9px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+}
+
+.stat i {
+  font-style: normal;
+  color: var(--dimmer);
+  margin-left: 1px;
+}
+
+.badge {
+  flex: none;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 1px 4px;
+  border-radius: 4px;
+}
+
+.badge--new {
+  background: var(--accent);
+  color: #1a0d04;
+}
+
+.row__handle {
+  flex: none;
+  width: 34px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dimmer);
+  fill: currentColor;
+  /* Required: lets dnd-kit's pointer sensor own the gesture on this element
+     only, so vertical swipes anywhere else still scroll the list. */
+  touch-action: none;
+}
+
+.row__handle:active {
+  color: var(--accent);
+}
+
+.is-drafted .row__handle {
+  visibility: hidden;
+}
+
+/* ---------- empty state ---------- */
+
+.empty {
+  padding: 48px 24px;
+  text-align: center;
+  color: var(--dim);
+}
+
+.empty h1 {
+  font-size: 22px;
+  color: var(--text);
+  margin: 0 0 8px;
+}
+
+.btn {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 12px 20px;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #1a0d04;
+  font-weight: 600;
+}
+
+.empty__hint {
+  margin-top: 20px;
+  font-size: 13px;
+  color: var(--dimmer);
+}
+
+/* ---------- detail ---------- */
+
+.detail {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+}
+
+.detail__bar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: calc(env(safe-area-inset-top) + 8px) 12px 8px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+}
+
+.detail__back {
+  font-size: 16px;
+  color: var(--accent);
+  padding: 6px 4px;
+}
+
+.detail__back span {
+  font-size: 22px;
+  vertical-align: -2px;
+}
+
+.detail__scroll {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0 14px;
+}
+
+.detail__hero {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 16px 0;
+}
+
+.shot--detail {
+  width: 112px;
+  height: 112px;
+  border-radius: 12px;
+}
+
+.shot--detail img {
+  width: 200%;
+  margin-left: -50%;
+  margin-top: 0;
+}
+
+.detail__id {
+  min-width: 0;
+}
+
+.detail__rank {
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.detail__name {
+  margin: 2px 0 4px;
+  font-size: 24px;
+  line-height: 1.1;
+}
+
+.detail__meta {
+  font-size: 14px;
+  color: var(--dim);
+}
+
+.detail__bbm {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--dimmer);
+  font-variant-numeric: tabular-nums;
+}
+
+.detail__h2 {
+  margin: 18px 0 8px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--dimmer);
+  font-weight: 600;
+}
+
+.catgrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+
+.cat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 10px;
+  min-height: 62px;
+}
+
+.cat__label {
+  font-size: 11px;
+  color: var(--dimmer);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.cat__value {
+  font-size: 20px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  margin-top: 1px;
+}
+
+.cat__sub {
+  font-size: 10px;
+  color: var(--dimmer);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rawtable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rawtable th {
+  text-align: left;
+  font-weight: 400;
+  color: var(--dim);
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.rawtable td {
+  text-align: right;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.detail__pad {
+  height: calc(env(safe-area-inset-bottom) + 32px);
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 12px;
+}
+
+.tag i {
+  font-style: normal;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--dimmer);
+}
+
+.note {
+  margin: 0 0 10px;
+  padding: 11px 12px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #c9d3e0;
+}
+
+/* Long-pressing the drag handle must not pop iOS's selection callout. */
+.row,
+.row__handle {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
