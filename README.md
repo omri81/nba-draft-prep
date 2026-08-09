@@ -48,6 +48,28 @@ repeats round 2's order instead of snaking back, so the 1.01 picks at
 The setup sheet lists your first eight picks so you can check the schedule
 against your league's rules before you trust the highlighting.
 
+## Mock draft
+
+**⋯ → Mock draft…** — you make every pick, for every team. No autopick, no
+simulation: you know your league, so your judgment is the model.
+
+Set the league size, your slot, rounds, and optionally your leaguemates' names.
+Then the bar at the top tells you who's on the clock (turning orange when it's
+you) and you tap a player to give them to that team. Drafted players leave the
+pool; the board stays in your rank order, so most picks are one tap. `↺` undoes
+a mis-tap, and the **ⓘ** on each row still opens the full stat sheet.
+
+**Table** at any point shows all teams across your 11 categories — per-game
+totals, each team's rank in every category, and roto points (league size for
+first down to 1). FG% and FT% are aggregated as total makes over total
+attempts, never as an average of player percentages. Below the table, every
+team's roster with the round and pick it was taken at.
+
+The mock lives in its own storage key and **only reads your rank order** — it
+never writes to it. Run as many as you like; the board is byte-identical
+afterwards, and your live drafted flags are untouched. It survives a reload, so
+locking your phone mid-mock doesn't lose it.
+
 ## Backups
 
 Safari can evict `localStorage`. **⋯ → Export data** downloads a JSON file with

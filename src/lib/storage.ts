@@ -1,4 +1,4 @@
-import type { AppData, Player, Prefs } from '../types'
+import type { AppData, MockState, Player, Prefs } from '../types'
 
 const V = 'v1'
 export const KEYS = {
@@ -7,6 +7,7 @@ export const KEYS = {
   drafted: `nbadp:${V}:drafted`,
   meta: `nbadp:${V}:meta`,
   prefs: `nbadp:${V}:prefs`,
+  mock: `nbadp:${V}:mock`,
 } as const
 
 export const EMPTY_DATA: AppData = {
@@ -89,6 +90,21 @@ export function loadPrefs(): Prefs {
 
 export function savePrefs(prefs: Prefs): void {
   write(KEYS.prefs, prefs)
+}
+
+/**
+ * The mock draft lives in its own key and is never merged into the board.
+ * It reads my rank order; it must never write to it.
+ */
+export function loadMock(): MockState | null {
+  const m = read<MockState | null>(KEYS.mock, null)
+  if (!m || !Array.isArray(m.picks) || !m.teams) return null
+  return m
+}
+
+export function saveMock(mock: MockState | null): void {
+  if (mock === null) localStorage.removeItem(KEYS.mock)
+  else write(KEYS.mock, mock)
 }
 
 export function clearAll(): void {

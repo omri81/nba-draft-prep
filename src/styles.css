@@ -899,3 +899,354 @@ button {
   padding: 9px 22px;
   font-size: 15px;
 }
+
+/* ---------- mock draft ---------- */
+
+.mockbar {
+  flex: none;
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px 9px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--line);
+}
+
+.mockbar--me {
+  background: var(--accent-dim);
+  border-bottom-color: var(--accent);
+}
+
+.mockbar--done {
+  background: #14261f;
+}
+
+.mockbar__who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+}
+
+.mockbar__pos {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--dim);
+  white-space: nowrap;
+}
+
+.mockbar--me .mockbar__pos {
+  color: #ffd9bf;
+  opacity: 0.8;
+}
+
+.mockbar__who strong {
+  font-size: 16px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mockbar--me .mockbar__who strong {
+  color: #fff1e6;
+  letter-spacing: 0.04em;
+}
+
+.mockbar__actions {
+  flex: none;
+  display: flex;
+  gap: 4px;
+}
+
+.mockbar__actions button {
+  min-width: 34px;
+  height: 30px;
+  padding: 0 9px;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.mockbar__actions button:disabled {
+  opacity: 0.35;
+}
+
+.mockbar__actions .danger {
+  color: var(--bad);
+}
+
+.mockbar__progress {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.mockbar__progress i {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.15s ease;
+}
+
+.row__info {
+  font-size: 17px;
+  color: var(--dim);
+}
+
+/* ---------- mock setup extras ---------- */
+
+.linkrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 15px;
+}
+
+.linkrow span {
+  color: var(--dim);
+}
+
+.names {
+  padding: 8px 0;
+}
+
+.names__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.names__row > span {
+  width: 20px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--dimmer);
+  font-variant-numeric: tabular-nums;
+}
+
+.names__row input {
+  flex: 1;
+  min-height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-size: 16px;
+}
+
+.names__row.is-me input {
+  border-color: var(--accent);
+}
+
+/* ---------- standings table ---------- */
+
+.detail__count {
+  font-size: 12px;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.tablewrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.standings {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.standings th,
+.standings td {
+  padding: 7px 8px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+}
+
+.standings thead th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  color: var(--dimmer);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.standings thead th i {
+  font-style: normal;
+  margin-left: 1px;
+}
+
+.standings .sticky {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  font-weight: 600;
+  max-width: 108px;
+}
+
+.standings thead .sticky {
+  background: var(--surface-2);
+  z-index: 2;
+}
+
+.standings__name {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.standings__n {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--dimmer);
+}
+
+.standings tbody td i {
+  display: block;
+  font-style: normal;
+  font-size: 9px;
+  color: var(--dimmer);
+}
+
+.standings tbody tr.is-me td {
+  background: rgba(242, 118, 46, 0.11);
+  color: #ffd9bf;
+}
+
+/* The pinned column must be fully opaque. Anything translucent here lets the
+   horizontally scrolled cells show through the team name. */
+.standings tbody tr.is-me .sticky {
+  background: #2c2220;
+  color: #ffd9bf;
+}
+
+.standings td.is-best {
+  color: var(--good);
+  font-weight: 700;
+}
+
+.standings tbody tr.is-me td.is-best {
+  color: #7ff0bb;
+}
+
+.standings .roto {
+  font-weight: 700;
+  border-left: 1px solid var(--line);
+}
+
+/* ---------- rosters ---------- */
+
+.roster {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: 6px;
+  overflow: hidden;
+}
+
+.roster__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 12px;
+  background: var(--surface);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.roster__head.is-me {
+  background: var(--accent-dim);
+  color: #ffd9bf;
+}
+
+.roster__meta {
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.roster__head.is-me .roster__meta {
+  color: #ffd9bf;
+  opacity: 0.85;
+}
+
+.roster__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.roster__list li {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 12px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+}
+
+.roster__pick {
+  flex: none;
+  width: 34px;
+  font-size: 11px;
+  color: var(--dimmer);
+  font-variant-numeric: tabular-nums;
+}
+
+.roster__player {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roster__pos {
+  flex: none;
+  font-size: 10px;
+  color: var(--dim);
+}
+
+.standings__rotohdr {
+  display: block;
+  font-style: normal;
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--dimmer);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.standings__n b {
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 11px;
+}
+
+.standings tbody tr.is-me .standings__n b {
+  color: #ffd9bf;
+}

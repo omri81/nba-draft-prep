@@ -12,7 +12,10 @@ interface Props {
   sortable: boolean
   /** Round number when this rank is one of my picks, 0 otherwise. */
   pickRound: number
+  /** In a mock draft the row's job changes: tap drafts, no reordering. */
+  mockMode: boolean
   onOpen: (id: string) => void
+  onDraftToClock: (id: string) => void
   onToggleDrafted: (id: string) => void
 }
 
@@ -20,7 +23,17 @@ function fmt(v: number | undefined): string {
   return v === undefined ? '–' : v.toFixed(1)
 }
 
-function PlayerRowImpl({ player, rank, drafted, sortable, pickRound, onOpen, onToggleDrafted }: Props) {
+function PlayerRowImpl({
+  player,
+  rank,
+  drafted,
+  sortable,
+  pickRound,
+  mockMode,
+  onOpen,
+  onDraftToClock,
+  onToggleDrafted,
+}: Props) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: player.id, disabled: !sortable })
 
@@ -32,17 +45,23 @@ function PlayerRowImpl({ player, rank, drafted, sortable, pickRound, onOpen, onT
       }`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
+      {!mockMode && (
+        <button
+          type="button"
+          className="row__check"
+          aria-pressed={drafted}
+          aria-label={drafted ? `Un-draft ${player.name}` : `Mark ${player.name} drafted`}
+          onClick={() => onToggleDrafted(player.id)}
+        >
+          <span className="row__check-box">{drafted ? '✓' : ''}</span>
+        </button>
+      )}
+
       <button
         type="button"
-        className="row__check"
-        aria-pressed={drafted}
-        aria-label={drafted ? `Un-draft ${player.name}` : `Mark ${player.name} drafted`}
-        onClick={() => onToggleDrafted(player.id)}
+        className="row__main"
+        onClick={() => (mockMode ? onDraftToClock(player.id) : onOpen(player.id))}
       >
-        <span className="row__check-box">{drafted ? '✓' : ''}</span>
-      </button>
-
-      <button type="button" className="row__main" onClick={() => onOpen(player.id)}>
         <span className="row__rank">{rank}</span>
         <Headshot key={player.name} name={player.name} size="row" />
         <span className="row__text">
@@ -66,20 +85,31 @@ function PlayerRowImpl({ player, rank, drafted, sortable, pickRound, onOpen, onT
         </span>
       </button>
 
-      <button
-        type="button"
-        ref={setActivatorNodeRef}
-        className="row__handle"
-        aria-label={`Reorder ${player.name}`}
-        {...attributes}
-        {...listeners}
-      >
-        <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
-          <circle cx="7" cy="4" r="1.6" /><circle cx="13" cy="4" r="1.6" />
-          <circle cx="7" cy="10" r="1.6" /><circle cx="13" cy="10" r="1.6" />
-          <circle cx="7" cy="16" r="1.6" /><circle cx="13" cy="16" r="1.6" />
-        </svg>
-      </button>
+      {mockMode ? (
+        <button
+          type="button"
+          className="row__handle row__info"
+          aria-label={`Stats for ${player.name}`}
+          onClick={() => onOpen(player.id)}
+        >
+          ⓘ
+        </button>
+      ) : (
+        <button
+          type="button"
+          ref={setActivatorNodeRef}
+          className="row__handle"
+          aria-label={`Reorder ${player.name}`}
+          {...attributes}
+          {...listeners}
+        >
+          <svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true">
+            <circle cx="7" cy="4" r="1.6" /><circle cx="13" cy="4" r="1.6" />
+            <circle cx="7" cy="10" r="1.6" /><circle cx="13" cy="10" r="1.6" />
+            <circle cx="7" cy="16" r="1.6" /><circle cx="13" cy="16" r="1.6" />
+          </svg>
+        </button>
+      )}
     </li>
   )
 }

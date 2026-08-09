@@ -52,6 +52,26 @@ export interface DraftConfig {
   thirdRoundReversal: boolean
 }
 
+export interface MockPick {
+  /** Overall pick number, 1-based. */
+  pick: number
+  /** Draft slot that made it, 1-based. */
+  team: number
+  playerId: string
+}
+
+export interface MockState {
+  /** Snapshot of the draft config taken when the mock started, so editing
+   *  the draft slot mid-mock can't renumber picks already made. */
+  teams: number
+  myTeam: number
+  thirdRoundReversal: boolean
+  rounds: number
+  teamNames: string[]
+  picks: MockPick[]
+  startedAt: number
+}
+
 export interface Prefs {
   hideDrafted: boolean
   positions: string[]

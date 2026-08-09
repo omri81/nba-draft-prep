@@ -41,3 +41,14 @@ export function myPickNumbers(cfg: DraftConfig, upTo: number): number[] {
   }
   return out
 }
+
+/**
+ * Which draft slot (1-based) is on the clock at a given overall pick number.
+ * The inverse of myPickNumbers, used to run a manual mock through every team.
+ */
+export function teamAtPick(pickNumber: number, teams: number, thirdRoundReversal: boolean): number {
+  if (teams < 1 || pickNumber < 1) return 1
+  const round = roundOf(pickNumber, teams)
+  const slotInRound = ((pickNumber - 1) % teams) + 1
+  return isForwardRound(round, thirdRoundReversal) ? slotInRound : teams - slotInRound + 1
+}

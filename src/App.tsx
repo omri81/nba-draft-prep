@@ -15,9 +15,16 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import type { AppData, DraftConfig, Player, Prefs } from './types'
+import type { AppData, DraftConfig, MockState, Player, Prefs } from './types'
 import { parseWorkbook } from './lib/parse'
 import { myPickNumbers, roundOf } from './lib/draft'
+import {
+  createMock,
+  draftToClock,
+  isComplete,
+  takenIds,
+  undoLast,
+} from './lib/mock'
 import { normalizeName } from './lib/normalize'
 import {
   EMPTY_DATA,
@@ -32,11 +39,16 @@ import {
   saveDrafted,
   saveOrder,
   savePrefs,
+  loadMock,
+  saveMock,
 } from './lib/storage'
 import { PlayerRow } from './components/PlayerRow'
 import { PlayerDetail } from './components/PlayerDetail'
 import { Toolbar } from './components/Toolbar'
 import { DraftSetup } from './components/DraftSetup'
+import { MockSetup } from './components/MockSetup'
+import { MockBar } from './components/MockBar'
+import { MockResults } from './components/MockResults'
 
 interface Ranked {
   player: Player
@@ -49,6 +61,9 @@ export default function App() {
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [draftSetupOpen, setDraftSetupOpen] = useState(false)
+  const [mockSetupOpen, setMockSetupOpen] = useState(false)
+  const [mock, setMock] = useState<MockState | null>(() => loadMock())
+  const [standingsOpen, setStandingsOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ text: string; bad: boolean } | null>(null)
   const setError = useCallback((text: string | null) => setNotice(text ? { text, bad: true } : null), [])
@@ -70,9 +85,14 @@ export default function App() {
     return out
   }, [data.order, byId])
 
+  const mockTaken = useMemo(() => (mock ? takenIds(mock) : null), [mock])
+
   const visible = useMemo<Ranked[]>(() => {
     const q = query.trim().toLowerCase()
     let list = ranked
+
+    // In a mock, the board is the pool of players still available.
+    if (mockTaken) list = list.filter((r) => !mockTaken.has(r.player.id))
 
     if (q) {
       // Match the normalized id too, so typing "doncic" on a phone keyboard
@@ -85,7 +105,9 @@ export default function App() {
     if (prefs.positions.length > 0) {
       list = list.filter((r) => r.player.pos.some((p) => prefs.positions.includes(p)))
     }
-    if (prefs.hideDrafted) {
+    if (mockTaken) {
+      // Live drafted flags are irrelevant inside a mock.
+    } else if (prefs.hideDrafted) {
       list = list.filter((r) => !draftedSet.has(r.player.id))
     } else {
       // Drafted players sink to the bottom instead of vanishing, so I can still
@@ -95,7 +117,7 @@ export default function App() {
       list = undrafted.length === list.length ? list : [...undrafted, ...drafted]
     }
     return list
-  }, [ranked, query, prefs.positions, prefs.hideDrafted, draftedSet])
+  }, [ranked, query, prefs.positions, prefs.hideDrafted, draftedSet, mockTaken])
 
   const visibleIds = useMemo(() => visible.map((r) => r.player.id), [visible])
   const remaining = ranked.length - data.drafted.length
@@ -122,6 +144,63 @@ export default function App() {
     if (n === undefined) return null
     return { number: n, round: pickRounds.get(n) ?? 1, onClock: n === made + 1 }
   }, [pickRounds, data.drafted.length])
+
+  // ---- mock draft ----------------------------------------------------------
+
+  const persistMock = useCallback((next: MockState | null) => {
+    setMock(next)
+    try {
+      saveMock(next)
+    } catch (err) {
+      setError((err as Error).message)
+    }
+  }, [])
+
+  const startMock = useCallback(
+    (rounds: number, names: string[]) => {
+      setMockSetupOpen(false)
+      setQuery('')
+      persistMock(createMock(prefs.draft, rounds, names))
+    },
+    [prefs.draft, persistMock],
+  )
+
+  const draftInMock = useCallback(
+    (playerId: string) => {
+      setMock((prev) => {
+        if (!prev || isComplete(prev)) return prev
+        const next = draftToClock(prev, playerId)
+        try {
+          saveMock(next)
+        } catch (err) {
+          setError((err as Error).message)
+        }
+        // Auto-open the table the moment the last pick lands.
+        if (isComplete(next)) setStandingsOpen(true)
+        return next
+      })
+    },
+    [],
+  )
+
+  const undoMockPick = useCallback(() => {
+    setMock((prev) => {
+      if (!prev) return prev
+      const next = undoLast(prev)
+      try {
+        saveMock(next)
+      } catch {
+        /* undo is not worth blocking on */
+      }
+      return next
+    })
+  }, [])
+
+  const discardMock = useCallback(() => {
+    if (!confirm('Discard this mock draft? Your board is unaffected.')) return
+    setStandingsOpen(false)
+    persistMock(null)
+  }, [persistMock])
 
   // ---- persistence helpers -------------------------------------------------
 
@@ -310,8 +389,10 @@ export default function App() {
         }
         hideDrafted={prefs.hideDrafted}
         onToggleHideDrafted={() => updatePrefs((p) => ({ hideDrafted: !p.hideDrafted }))}
-        nextPick={nextPick}
+        nextPick={mock ? null : nextPick}
         onOpenDraftSetup={() => setDraftSetupOpen(true)}
+        mockActive={mock !== null}
+        onOpenMockSetup={() => setMockSetupOpen(true)}
         onImportProjections={() => xlsxInput.current?.click()}
         onExportData={onExportData}
         onImportData={() => jsonInput.current?.click()}
@@ -322,6 +403,15 @@ export default function App() {
         sourceFile={data.sourceFile}
         importedAt={data.importedAt}
       />
+
+      {mock && (
+        <MockBar
+          mock={mock}
+          onUndo={undoMockPick}
+          onStandings={() => setStandingsOpen(true)}
+          onDiscard={discardMock}
+        />
+      )}
 
       {(busy || notice) && (
         <div className={`notice${!busy && notice?.bad ? ' notice--error' : ''}`}>
@@ -365,8 +455,10 @@ export default function App() {
                     player={player}
                     rank={rank}
                     drafted={draftedSet.has(player.id)}
-                    sortable={!draftedSet.has(player.id)}
-                    pickRound={pickRounds.get(rank) ?? 0}
+                    sortable={!mock && !draftedSet.has(player.id)}
+                    pickRound={mock ? 0 : pickRounds.get(rank) ?? 0}
+                    mockMode={mock !== null}
+                    onDraftToClock={draftInMock}
                     onOpen={openPlayer}
                     onToggleDrafted={toggleDrafted}
                   />
@@ -376,6 +468,19 @@ export default function App() {
           </DndContext>
         )}
       </main>
+
+      {mockSetupOpen && (
+        <MockSetup
+          config={prefs.draft}
+          onChangeConfig={(patch) => updatePrefs((p) => ({ draft: { ...p.draft, ...patch } }))}
+          onStart={startMock}
+          onClose={() => setMockSetupOpen(false)}
+        />
+      )}
+
+      {mock && standingsOpen && (
+        <MockResults mock={mock} byId={byId} onBack={() => setStandingsOpen(false)} />
+      )}
 
       {draftSetupOpen && (
         <DraftSetup

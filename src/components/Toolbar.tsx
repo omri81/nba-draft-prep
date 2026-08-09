@@ -12,6 +12,8 @@ interface Props {
   onToggleHideDrafted: () => void
   nextPick: { number: number; round: number; onClock: boolean } | null
   onOpenDraftSetup: () => void
+  mockActive: boolean
+  onOpenMockSetup: () => void
   onImportProjections: () => void
   onExportData: () => void
   onImportData: () => void
@@ -79,6 +81,11 @@ export function Toolbar(props: Props) {
               <button type="button" onClick={run(props.onOpenDraftSetup)}>
                 Draft slot…
               </button>
+              {!props.mockActive && (
+                <button type="button" onClick={run(props.onOpenMockSetup)}>
+                  Mock draft…
+                </button>
+              )}
               <hr />
               <button type="button" onClick={run(props.onImportProjections)}>
                 Import projections (.xlsx)
