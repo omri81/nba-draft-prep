@@ -15,8 +15,9 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import type { AppData, Player, Prefs } from './types'
+import type { AppData, DraftConfig, Player, Prefs } from './types'
 import { parseWorkbook } from './lib/parse'
+import { myPickNumbers, roundOf } from './lib/draft'
 import { normalizeName } from './lib/normalize'
 import {
   EMPTY_DATA,
@@ -35,6 +36,7 @@ import {
 import { PlayerRow } from './components/PlayerRow'
 import { PlayerDetail } from './components/PlayerDetail'
 import { Toolbar } from './components/Toolbar'
+import { DraftSetup } from './components/DraftSetup'
 
 interface Ranked {
   player: Player
@@ -46,6 +48,7 @@ export default function App() {
   const [prefs, setPrefs] = useState<Prefs>(() => loadPrefs())
   const [query, setQuery] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [draftSetupOpen, setDraftSetupOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ text: string; bad: boolean } | null>(null)
   const setError = useCallback((text: string | null) => setNotice(text ? { text, bad: true } : null), [])
@@ -99,6 +102,26 @@ export default function App() {
   const hasNew = useMemo(() => data.players.some((p) => p.isNew), [data.players])
 
   const selected = selectedId ? ranked.find((r) => r.player.id === selectedId) : undefined
+
+  // ---- my snake-draft slots ------------------------------------------------
+
+  const pickRounds = useMemo(() => {
+    const nums = myPickNumbers(prefs.draft, ranked.length)
+    // rank -> round, so a row can label itself without re-deriving the schedule
+    const m = new Map<number, number>()
+    for (const n of nums) m.set(n, roundOf(n, prefs.draft.teams))
+    return m
+  }, [prefs.draft, ranked.length])
+
+  const nextPick = useMemo(() => {
+    if (pickRounds.size === 0) return null
+    // Every crossed-off player is one pick that has come off the board.
+    const made = data.drafted.length
+    const mine = [...pickRounds.keys()].sort((a, b) => a - b)
+    const n = mine.find((p) => p > made)
+    if (n === undefined) return null
+    return { number: n, round: pickRounds.get(n) ?? 1, onClock: n === made + 1 }
+  }, [pickRounds, data.drafted.length])
 
   // ---- persistence helpers -------------------------------------------------
 
@@ -287,6 +310,8 @@ export default function App() {
         }
         hideDrafted={prefs.hideDrafted}
         onToggleHideDrafted={() => updatePrefs((p) => ({ hideDrafted: !p.hideDrafted }))}
+        nextPick={nextPick}
+        onOpenDraftSetup={() => setDraftSetupOpen(true)}
         onImportProjections={() => xlsxInput.current?.click()}
         onExportData={onExportData}
         onImportData={() => jsonInput.current?.click()}
@@ -341,6 +366,7 @@ export default function App() {
                     rank={rank}
                     drafted={draftedSet.has(player.id)}
                     sortable={!draftedSet.has(player.id)}
+                    pickRound={pickRounds.get(rank) ?? 0}
                     onOpen={openPlayer}
                     onToggleDrafted={toggleDrafted}
                   />
@@ -350,6 +376,16 @@ export default function App() {
           </DndContext>
         )}
       </main>
+
+      {draftSetupOpen && (
+        <DraftSetup
+          config={prefs.draft}
+          onChange={(patch: Partial<DraftConfig>) =>
+            updatePrefs((p) => ({ draft: { ...p.draft, ...patch } }))
+          }
+          onClose={() => setDraftSetupOpen(false)}
+        />
+      )}
 
       {selected && (
         <PlayerDetail

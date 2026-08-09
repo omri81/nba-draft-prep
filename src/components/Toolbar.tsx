@@ -10,6 +10,8 @@ interface Props {
   onTogglePosition: (pos: string) => void
   hideDrafted: boolean
   onToggleHideDrafted: () => void
+  nextPick: { number: number; round: number; onClock: boolean } | null
+  onOpenDraftSetup: () => void
   onImportProjections: () => void
   onExportData: () => void
   onImportData: () => void
@@ -43,8 +45,16 @@ export function Toolbar(props: Props) {
     <header className="toolbar">
       <div className="toolbar__top">
         <div className="toolbar__title">
-          <strong>{props.remaining}</strong> left
-          <span className="toolbar__sub">of {props.total}</span>
+          <div>
+            <strong>{props.remaining}</strong> left
+            <span className="toolbar__sub">of {props.total}</span>
+          </div>
+          {props.nextPick && (
+            <div className={`nextpick${props.nextPick.onClock ? ' nextpick--now' : ''}`}>
+              {props.nextPick.onClock ? "You're up" : 'Next'} · #{props.nextPick.number} · R
+              {props.nextPick.round}
+            </div>
+          )}
         </div>
 
         <div className="toolbar__actions" ref={menuRef}>
@@ -66,6 +76,10 @@ export function Toolbar(props: Props) {
           </button>
           {menuOpen && (
             <div className="menu" role="menu">
+              <button type="button" onClick={run(props.onOpenDraftSetup)}>
+                Draft slot…
+              </button>
+              <hr />
               <button type="button" onClick={run(props.onImportProjections)}>
                 Import projections (.xlsx)
               </button>

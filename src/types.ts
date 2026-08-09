@@ -43,9 +43,19 @@ export interface AppData {
   sourceFile: string | null
 }
 
+export interface DraftConfig {
+  /** Teams in the league. */
+  teams: number
+  /** My slot in round 1, 1-based. null = not configured, no highlighting. */
+  pick: number | null
+  /** Round 3 repeats round 2's order instead of snaking back. */
+  thirdRoundReversal: boolean
+}
+
 export interface Prefs {
   hideDrafted: boolean
   positions: string[]
+  draft: DraftConfig
 }
 
 export const POSITIONS = ['PG', 'SG', 'SF', 'PF', 'C'] as const

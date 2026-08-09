@@ -30,6 +30,24 @@ banners) are skipped automatically.
 normalized name, existing players stay exactly where you put them, and anyone
 new is appended at the bottom with a `NEW` badge. Drafted flags survive too.
 
+## Draft slot highlighting
+
+**⋯ → Draft slot…** — set the league size and which pick you have in round 1,
+and the board highlights the rows that land on your picks, each tagged with its
+round. The header shows your next pick, and flips to *You're up* when the number
+of players you've crossed off means you're on the clock.
+
+Snake order by default. **Third-round reversal** (on by default) means round 3
+repeats round 2's order instead of snaking back, so the 1.01 picks at
+
+```
+1, 20, 30, 31, 50, 51, 70, 71 …   (with 3RR)
+1, 20, 21, 40, 41, 60, 61, 80 …   (plain snake)
+```
+
+The setup sheet lists your first eight picks so you can check the schedule
+against your league's rules before you trust the highlighting.
+
 ## Backups
 
 Safari can evict `localStorage`. **⋯ → Export data** downloads a JSON file with

@@ -17,7 +17,12 @@ export const EMPTY_DATA: AppData = {
   sourceFile: null,
 }
 
-export const DEFAULT_PREFS: Prefs = { hideDrafted: false, positions: [] }
+export const DEFAULT_PREFS: Prefs = {
+  hideDrafted: false,
+  positions: [],
+  // Third-round reversal on by default — that's my league's rule.
+  draft: { teams: 10, pick: null, thirdRoundReversal: true },
+}
 
 function read<T>(key: string, fallback: T): T {
   try {
@@ -72,7 +77,14 @@ export function saveDrafted(drafted: string[]): void {
 }
 
 export function loadPrefs(): Prefs {
-  return { ...DEFAULT_PREFS, ...read<Partial<Prefs>>(KEYS.prefs, {}) }
+  const stored = read<Partial<Prefs>>(KEYS.prefs, {})
+  // `draft` is nested, so merge it explicitly — prefs saved before the draft
+  // settings existed would otherwise come back undefined.
+  return {
+    ...DEFAULT_PREFS,
+    ...stored,
+    draft: { ...DEFAULT_PREFS.draft, ...(stored.draft ?? {}) },
+  }
 }
 
 export function savePrefs(prefs: Prefs): void {
@@ -154,6 +166,10 @@ export function parseBackup(text: string): { data: AppData; prefs: Prefs } {
       importedAt: d.importedAt ?? null,
       sourceFile: d.sourceFile ?? null,
     },
-    prefs: { ...DEFAULT_PREFS, ...(json.prefs ?? {}) },
+    prefs: {
+      ...DEFAULT_PREFS,
+      ...(json.prefs ?? {}),
+      draft: { ...DEFAULT_PREFS.draft, ...(json.prefs?.draft ?? {}) },
+    },
   }
 }

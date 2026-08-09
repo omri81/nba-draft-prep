@@ -10,6 +10,8 @@ interface Props {
   rank: number
   drafted: boolean
   sortable: boolean
+  /** Round number when this rank is one of my picks, 0 otherwise. */
+  pickRound: number
   onOpen: (id: string) => void
   onToggleDrafted: (id: string) => void
 }
@@ -18,14 +20,16 @@ function fmt(v: number | undefined): string {
   return v === undefined ? '–' : v.toFixed(1)
 }
 
-function PlayerRowImpl({ player, rank, drafted, sortable, onOpen, onToggleDrafted }: Props) {
+function PlayerRowImpl({ player, rank, drafted, sortable, pickRound, onOpen, onToggleDrafted }: Props) {
   const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging } =
     useSortable({ id: player.id, disabled: !sortable })
 
   return (
     <li
       ref={setNodeRef}
-      className={`row${drafted ? ' is-drafted' : ''}${isDragging ? ' is-dragging' : ''}`}
+      className={`row${drafted ? ' is-drafted' : ''}${isDragging ? ' is-dragging' : ''}${
+        pickRound ? ' is-mypick' : ''
+      }`}
       style={{ transform: CSS.Transform.toString(transform), transition }}
     >
       <button
@@ -44,6 +48,7 @@ function PlayerRowImpl({ player, rank, drafted, sortable, onOpen, onToggleDrafte
         <span className="row__text">
           <span className="row__line1">
             <span className="row__name">{player.name}</span>
+            {pickRound > 0 && <span className="badge badge--pick">R{pickRound}</span>}
             {player.isNew && <span className="badge badge--new">NEW</span>}
             <span className="row__meta">
               {player.team}
