@@ -11,6 +11,9 @@
   --good: #3fb27f;
   --bad: #e0574a;
   --radius: 10px;
+  /* Phone-width reading column. The scroll surface is always the full
+     viewport; only the content inside it is capped. */
+  --col: 480px;
   color-scheme: dark;
 }
 
@@ -49,15 +52,35 @@ button {
 .app {
   display: flex;
   flex-direction: column;
+  /* vh first as a fallback for Safari older than 15.4. */
+  height: 100vh;
   height: 100dvh;
-  /* Designed for a phone. On a desktop browser, keep it as a centred column
-     instead of stretching rows across 1400px. */
-  max-width: 480px;
+}
+
+/*
+ * Centring trick used by the full-bleed bars: pad each side out to the gutter
+ * so the content lines up with the list, while the element itself still spans
+ * the viewport. Capping the *container* instead would leave the desktop
+ * margins unscrollable — a wheel out there has nothing to scroll and does not
+ * chain into the board.
+ */
+.toolbar,
+.mockbar,
+.notice,
+.detail__bar,
+.detail__scroll {
+  padding-left: max(var(--gutter, 10px), calc((100% - var(--col)) / 2));
+  padding-right: max(var(--gutter, 10px), calc((100% - var(--col)) / 2));
+}
+
+.list,
+.empty {
+  max-width: var(--col);
   margin-inline: auto;
 }
 
 @media (min-width: 481px) {
-  .app {
+  .list {
     border-inline: 1px solid var(--line);
   }
 }
@@ -68,9 +91,9 @@ button {
   flex: none;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
-  padding: calc(env(safe-area-inset-top) + 8px) 10px 8px;
-  padding-left: calc(env(safe-area-inset-left) + 10px);
-  padding-right: calc(env(safe-area-inset-right) + 10px);
+  padding-top: calc(env(safe-area-inset-top) + 8px);
+  padding-bottom: 8px;
+  --gutter: calc(env(safe-area-inset-left) + 10px);
 }
 
 .toolbar__top {
@@ -249,7 +272,8 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding-block: 8px;
+  --gutter: 12px;
   font-size: 13px;
   background: #14261f;
   color: #b7e6cf;
@@ -283,7 +307,7 @@ button {
 
 .list {
   list-style: none;
-  margin: 0;
+  margin: 0 auto;
   padding: 0;
 }
 
@@ -363,7 +387,12 @@ button {
   flex: none;
   display: block;
   overflow: hidden;
-  background: var(--surface-2);
+  background-color: var(--surface-2);
+  /* Same silhouette as the JS fallback. Sits under the photo so a row that
+     has not lazy-loaded yet still reads as a player, not a broken image. */
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='15' r='6.5' fill='%2339424f'/%3E%3Cpath d='M6 40c0-8.2 6.3-13 14-13s14 4.8 14 13z' fill='%2339424f'/%3E%3C/svg%3E");
+  background-size: cover;
+  background-position: center;
 }
 
 .shot img {
@@ -500,12 +529,7 @@ button {
 
 .detail {
   position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 480px;
+  inset: 0;
   z-index: 50;
   display: flex;
   flex-direction: column;
@@ -518,7 +542,9 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: calc(env(safe-area-inset-top) + 8px) 12px 8px;
+  padding-top: calc(env(safe-area-inset-top) + 8px);
+  padding-bottom: 8px;
+  --gutter: 12px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
 }
@@ -538,7 +564,7 @@ button {
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  padding: 0 14px;
+  --gutter: 14px;
 }
 
 .detail__hero {
@@ -908,7 +934,9 @@ button {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 10px 9px;
+  padding-top: 7px;
+  padding-bottom: 9px;
+  --gutter: 10px;
   background: var(--surface-2);
   border-bottom: 1px solid var(--line);
 }
