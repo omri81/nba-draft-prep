@@ -50,6 +50,16 @@ button {
   display: flex;
   flex-direction: column;
   height: 100dvh;
+  /* Designed for a phone. On a desktop browser, keep it as a centred column
+     instead of stretching rows across 1400px. */
+  max-width: 480px;
+  margin-inline: auto;
+}
+
+@media (min-width: 481px) {
+  .app {
+    border-inline: 1px solid var(--line);
+  }
 }
 
 /* ---------- toolbar ---------- */
@@ -490,7 +500,12 @@ button {
 
 .detail {
   position: fixed;
-  inset: 0;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
   z-index: 50;
   display: flex;
   flex-direction: column;
