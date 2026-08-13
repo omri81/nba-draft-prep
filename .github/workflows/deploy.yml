@@ -28,11 +28,10 @@ jobs:
         env:
           # Must match the repo name so asset URLs resolve on Pages.
           BASE_PATH: /${{ github.event.repository.name }}/
+      # Pages must already be enabled with Source: GitHub Actions.
+      # `enablement: true` looks tempting but the workflow token is not
+      # permitted to create the Pages site, and it fails the whole run.
       - uses: actions/configure-pages@v5
-        # Turns Pages on for the repo on the first run, so there is no manual
-        # step in Settings before the very first deploy.
-        with:
-          enablement: true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
