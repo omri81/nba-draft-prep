@@ -402,6 +402,25 @@ export default function App() {
     [data.sources, ingest],
   )
 
+  const addFromSheet = useCallback(
+    async (rawUrl: string) => {
+      const url = rawUrl.trim()
+      if (!url) return
+      setBusy('Loading from Google Sheets…')
+      setError(null)
+      try {
+        // Detection names the source, so pasting a Hashtag sheet creates the
+        // Hashtag set and pasting over an existing one refreshes it in place.
+        await ingest(await fetchSheetCsv(url), null, url)
+      } catch (err) {
+        setError((err as Error).message)
+      } finally {
+        setBusy(null)
+      }
+    },
+    [ingest],
+  )
+
   const dropSource = useCallback(
     (id: string) => {
       const src = data.sources[id]
@@ -581,6 +600,7 @@ export default function App() {
             setSourcesOpen(false)
             xlsxInput.current?.click()
           }}
+          onAddFromSheet={addFromSheet}
           onRemove={dropSource}
           onClose={() => setSourcesOpen(false)}
         />

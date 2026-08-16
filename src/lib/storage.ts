@@ -74,7 +74,7 @@ export function loadData(): AppData {
     sourceFile: null,
   })
   const id = /monster|bbm/i.test(meta.sourceFile ?? '') ? 'bbm' : 'custom'
-  return {
+  const migrated: AppData = {
     sources: {
       [id]: {
         id,
@@ -88,6 +88,19 @@ export function loadData(): AppData {
     order,
     drafted,
   }
+
+  // Write the upgrade through and drop the old keys. Without this the board
+  // still loads, but it re-migrates on every launch and the legacy players
+  // blob sits there forever next to the new one, doubling what we store.
+  try {
+    write(KEYS.sources, migrated.sources)
+    write(KEYS.activeSource, migrated.activeSourceId)
+    localStorage.removeItem(KEYS.players)
+    localStorage.removeItem(KEYS.meta)
+  } catch {
+    /* Loading must succeed even if the upgrade write cannot. */
+  }
+  return migrated
 }
 
 export function saveData(data: AppData): void {

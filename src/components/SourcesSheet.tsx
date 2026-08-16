@@ -8,6 +8,7 @@ interface Props {
   onRefresh: (id: string) => void
   onLinkSheet: (id: string, url: string) => void
   onImportFile: () => void
+  onAddFromSheet: (url: string) => void
   onRemove: (id: string) => void
   onClose: () => void
 }
@@ -17,6 +18,8 @@ export function SourcesSheet(props: Props) {
   const sources = Object.values(data.sources)
   const [linking, setLinking] = useState<string | null>(null)
   const [url, setUrl] = useState('')
+  const [adding, setAdding] = useState(false)
+  const [addUrl, setAddUrl] = useState('')
 
   const startLinking = (id: string) => {
     setLinking(id)
@@ -120,11 +123,48 @@ export function SourcesSheet(props: Props) {
           shared across every set and never move.
         </p>
 
-        <div className="sheet__actions">
-          <button type="button" className="btn btn--sm" onClick={props.onImportFile}>
-            Import a file…
-          </button>
-        </div>
+        {adding ? (
+          <div className="src__link" style={{ padding: 0 }}>
+            <div className="sheet__label">Add from a Google Sheet</div>
+            <input
+              value={addUrl}
+              onChange={(e) => setAddUrl(e.target.value)}
+              placeholder="Paste the Google Sheet share link"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            <p className="sheet__note">
+              The sheet has to be shared with “anyone with the link”. It stays linked, so
+              ↻ Refresh will pull updates later.
+            </p>
+            <div className="src__linkactions">
+              <button type="button" className="pill" onClick={() => setAdding(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn--sm"
+                disabled={!!props.busy}
+                onClick={() => {
+                  props.onAddFromSheet(addUrl)
+                  setAdding(false)
+                }}
+              >
+                {props.busy ? 'Loading…' : 'Add'}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="sheet__actions">
+            <button type="button" className="pill" onClick={props.onImportFile}>
+              Import a file…
+            </button>
+            <button type="button" className="btn btn--sm" onClick={() => setAdding(true)}>
+              Add from Google Sheet…
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
