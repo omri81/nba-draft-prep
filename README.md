@@ -30,6 +30,37 @@ banners) are skipped automatically.
 normalized name, existing players stay exactly where you put them, and anyone
 new is appended at the bottom with a `NEW` badge. Drafted flags survive too.
 
+## Two projection sources
+
+**⋯ → Projections…** (or tap the source name under the counter) switches between
+projection sets. Only one is on screen at a time.
+
+**Switching never touches your board.** The rank order and drafted flags live
+outside the projection sets and are shared by all of them — flipping the source
+changes only the numbers on the rows. The order is the *union* across sources,
+so a player only one site covers keeps his slot; on the other source his stat
+line just reads as dashes.
+
+Both are auto-detected on import:
+
+- **Basketball Monster** — the `.xls` export, recognised by its per-category
+  value columns (`pV`, `toV`, `Minus1V`).
+- **Hashtag Basketball** — paste their table into a Google Sheet and import the
+  CSV. Their format has three traps, all handled: the header repeats every
+  dozen rows, the top header row sits one column left of its data, and Google
+  Sheets reads the `3PM` header as a *time* and stores it as `15:00`.
+  Percentages arrive as `0.534(11.1/20.7)`, which is unpacked into the rate plus
+  makes and attempts.
+
+### Refreshing from a Google Sheet
+
+Link a sheet to a source (**Projections… → Link a Google Sheet…**, paste the
+normal share link) and **↻ Refresh** pulls fresh numbers straight from Google —
+no file juggling on a phone. The sheet has to be shared with "anyone with the
+link"; its CSV export endpoint answers cross-origin requests, which is what
+makes this work from the browser. The link is stored in your browser, not in
+this repo.
+
 ## Draft slot highlighting
 
 **⋯ → Draft slot…** — set the league size and which pick you have in round 1,

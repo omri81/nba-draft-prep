@@ -21,8 +21,9 @@ interface Props {
   onResetDrafted: () => void
   onResetAll: () => void
   hasNew: boolean
-  sourceFile: string | null
-  importedAt: number | null
+  sourceLabel: string | null
+  sourceCount: number
+  onOpenSources: () => void
 }
 
 export function Toolbar(props: Props) {
@@ -51,6 +52,11 @@ export function Toolbar(props: Props) {
             <strong>{props.remaining}</strong> left
             <span className="toolbar__sub">of {props.total}</span>
           </div>
+          {props.sourceLabel && (
+            <button type="button" className="srcpill" onClick={props.onOpenSources}>
+              {props.sourceLabel} <span>▾</span>
+            </button>
+          )}
           {props.nextPick && (
             <div className={`nextpick${props.nextPick.onClock ? ' nextpick--now' : ''}`}>
               {props.nextPick.onClock ? "You're up" : 'Next'} · #{props.nextPick.number} · R
@@ -87,8 +93,8 @@ export function Toolbar(props: Props) {
                 </button>
               )}
               <hr />
-              <button type="button" onClick={run(props.onImportProjections)}>
-                Import projections (.xlsx)
+              <button type="button" onClick={run(props.onOpenSources)}>
+                Projections…
               </button>
               <button type="button" onClick={run(props.onExportData)}>
                 Export data (.json)
@@ -108,14 +114,7 @@ export function Toolbar(props: Props) {
               <button type="button" className="danger" onClick={run(props.onResetAll)}>
                 Erase all data
               </button>
-              {props.sourceFile && (
-                <p className="menu__note">
-                  {props.sourceFile}
-                  {props.importedAt && (
-                    <> · {new Date(props.importedAt).toLocaleDateString()}</>
-                  )}
-                </p>
-              )}
+
             </div>
           )}
         </div>

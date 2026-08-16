@@ -1278,3 +1278,133 @@ button {
 .standings tbody tr.is-me .standings__n b {
   color: #ffd9bf;
 }
+
+/* ---------- projection source switcher ---------- */
+
+.srcpill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  margin-top: 2px;
+  padding: 1px 7px;
+  border-radius: 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--dim);
+  font-size: 11px;
+  font-weight: 600;
+  max-width: 160px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.srcpill span {
+  color: var(--dimmer);
+  font-size: 9px;
+}
+
+.src {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  margin-bottom: 8px;
+  overflow: hidden;
+}
+
+.src.is-active {
+  border-color: var(--accent);
+}
+
+.src__pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 11px 12px;
+  text-align: left;
+}
+
+.src.is-active .src__pick {
+  background: var(--accent-dim);
+}
+
+.src__radio {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1.5px solid var(--dimmer);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  color: var(--accent);
+}
+
+.src.is-active .src__radio {
+  border-color: var(--accent);
+  color: #ffd9bf;
+}
+
+.src__body {
+  min-width: 0;
+}
+
+.src__name {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.src.is-active .src__name {
+  color: #ffd9bf;
+}
+
+.src__meta {
+  display: block;
+  font-size: 11px;
+  color: var(--dimmer);
+  font-variant-numeric: tabular-nums;
+}
+
+.src__actions,
+.src__linkactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 12px 11px;
+}
+
+.src__linkactions {
+  padding: 8px 0 0;
+  justify-content: flex-end;
+}
+
+.src__link {
+  padding: 0 12px 11px;
+}
+
+.src__link input {
+  width: 100%;
+  min-height: 38px;
+  padding: 0 10px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-size: 16px;
+}
+
+.pill--danger {
+  color: var(--bad);
+  border-color: #46231e;
+}
+
+.pill:disabled {
+  opacity: 0.4;
+}
+
+/* A player the active source has no projection for still shows, so the rank
+   order stays continuous — his stat line just reads as dashes. */
+.row__stats:empty::after {
+  content: '';
+}

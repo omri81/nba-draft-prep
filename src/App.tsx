@@ -33,7 +33,10 @@ import {
   loadData,
   loadPrefs,
   makeBackup,
-  mergeImport,
+  mergeSource,
+  removeSource,
+  setSheetUrl,
+  saveActiveSource,
   parseBackup,
   saveData,
   saveDrafted,
@@ -49,6 +52,8 @@ import { DraftSetup } from './components/DraftSetup'
 import { MockSetup } from './components/MockSetup'
 import { MockBar } from './components/MockBar'
 import { MockResults } from './components/MockResults'
+import { SourcesSheet } from './components/SourcesSheet'
+import { fetchSheetCsv } from './lib/sheets'
 
 interface Ranked {
   player: Player
@@ -64,6 +69,7 @@ export default function App() {
   const [mockSetupOpen, setMockSetupOpen] = useState(false)
   const [mock, setMock] = useState<MockState | null>(() => loadMock())
   const [standingsOpen, setStandingsOpen] = useState(false)
+  const [sourcesOpen, setSourcesOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
   const [notice, setNotice] = useState<{ text: string; bad: boolean } | null>(null)
   const setError = useCallback((text: string | null) => setNotice(text ? { text, bad: true } : null), [])
@@ -72,7 +78,26 @@ export default function App() {
   const xlsxInput = useRef<HTMLInputElement>(null)
   const jsonInput = useRef<HTMLInputElement>(null)
 
-  const byId = useMemo(() => new Map(data.players.map((p) => [p.id, p])), [data.players])
+  const activeSource = data.activeSourceId ? data.sources[data.activeSourceId] : undefined
+
+  /** Players of the source currently on screen. */
+  const byId = useMemo(
+    () => new Map((activeSource?.players ?? []).map((p) => [p.id, p] as const)),
+    [activeSource],
+  )
+
+  /**
+   * Identity fallback: a player the active source has no projection for still
+   * needs a name and position, so borrow them from whichever source knows him.
+   * Stats stay empty — one set of numbers on screen at a time.
+   */
+  const identityById = useMemo(() => {
+    const m = new Map<string, Player>()
+    for (const src of Object.values(data.sources)) {
+      for (const p of src.players) if (!m.has(p.id)) m.set(p.id, p)
+    }
+    return m
+  }, [data.sources])
   const draftedSet = useMemo(() => new Set(data.drafted), [data.drafted])
 
   /** Master board: my custom order, rank = position in that order. */
@@ -80,10 +105,15 @@ export default function App() {
     const out: Ranked[] = []
     data.order.forEach((id, i) => {
       const player = byId.get(id)
-      if (player) out.push({ player, rank: i + 1 })
+      if (player) {
+        out.push({ player, rank: i + 1 })
+        return
+      }
+      const identity = identityById.get(id)
+      if (identity) out.push({ player: { ...identity, stats: {} }, rank: i + 1 })
     })
     return out
-  }, [data.order, byId])
+  }, [data.order, byId, identityById])
 
   const mockTaken = useMemo(() => (mock ? takenIds(mock) : null), [mock])
 
@@ -121,7 +151,10 @@ export default function App() {
 
   const visibleIds = useMemo(() => visible.map((r) => r.player.id), [visible])
   const remaining = ranked.length - data.drafted.length
-  const hasNew = useMemo(() => data.players.some((p) => p.isNew), [data.players])
+  const hasNew = useMemo(
+    () => Object.values(data.sources).some((s) => s.players.some((p) => p.isNew)),
+    [data.sources],
+  )
 
   const selected = selectedId ? ranked.find((r) => r.player.id === selectedId) : undefined
 
@@ -297,6 +330,23 @@ export default function App() {
 
   // ---- import / export -----------------------------------------------------
 
+  const ingest = useCallback(
+    async (buf: ArrayBuffer, fileName: string | null, sheetUrl?: string) => {
+      const { players, skipped, kind, label } = await parseWorkbook(buf)
+      const before = new Set(data.order)
+      const added = players.filter((p) => !before.has(p.id)).length
+      persist(mergeSource(data, players, { id: kind, label, sourceFile: fileName, sheetUrl }))
+      setInfo(
+        `${label}: ${players.length} players` +
+          // "new" is only meaningful once there is already a board to be new to
+          (before.size > 0 && added ? ` · ${added} new to the board` : '') +
+          (skipped ? ` · ${skipped} rows skipped` : '') +
+          ' · your order was kept',
+      )
+    },
+    [data, persist, setInfo],
+  )
+
   const onXlsxPicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = '' // allow re-picking the same file
@@ -304,24 +354,63 @@ export default function App() {
     setBusy('Parsing projections…')
     setError(null)
     try {
-      const buf = await file.arrayBuffer()
-      const { players, skipped } = await parseWorkbook(buf)
-      const wasEmpty = data.players.length === 0
-      const added = players.filter((p) => !byId.has(p.id)).length
-      const next = mergeImport(data, players, file.name)
-      persist(next)
-      setBusy(null)
-      setInfo(
-        wasEmpty
-          ? `Imported ${players.length} players.` + (skipped ? ` ${skipped} rows skipped.` : '')
-          : `Imported ${players.length} players · ${added} new · your order was kept` +
-              (skipped ? ` · ${skipped} rows skipped` : ''),
-      )
+      await ingest(await file.arrayBuffer(), file.name)
     } catch (err) {
-      setBusy(null)
       setError((err as Error).message)
+    } finally {
+      setBusy(null)
     }
   }
+
+  // ---- projection sources --------------------------------------------------
+
+  const selectSource = useCallback((id: string) => {
+    setData((prev) => {
+      if (!prev.sources[id]) return prev
+      try {
+        saveActiveSource(id)
+      } catch (err) {
+        setError((err as Error).message)
+      }
+      return { ...prev, activeSourceId: id }
+    })
+  }, [])
+
+  const linkSheet = useCallback(
+    (id: string, url: string) => {
+      const trimmed = url.trim()
+      persist(setSheetUrl(data, id, trimmed || undefined))
+      setInfo(trimmed ? 'Sheet linked. Use Refresh to pull the latest numbers.' : 'Sheet link removed.')
+    },
+    [data, persist, setInfo],
+  )
+
+  const refreshSource = useCallback(
+    async (id: string) => {
+      const src = data.sources[id]
+      if (!src?.sheetUrl) return
+      setBusy(`Refreshing ${src.label}…`)
+      setError(null)
+      try {
+        await ingest(await fetchSheetCsv(src.sheetUrl), src.sourceFile, src.sheetUrl)
+      } catch (err) {
+        setError((err as Error).message)
+      } finally {
+        setBusy(null)
+      }
+    },
+    [data.sources, ingest],
+  )
+
+  const dropSource = useCallback(
+    (id: string) => {
+      const src = data.sources[id]
+      if (!src) return
+      if (!confirm(`Remove ${src.label}? Your rank order and drafted players stay as they are.`)) return
+      persist(removeSource(data, id))
+    },
+    [data, persist],
+  )
 
   const onExportData = () => {
     const blob = new Blob([JSON.stringify(makeBackup(data, prefs), null, 2)], {
@@ -346,14 +435,24 @@ export default function App() {
       persist(restored.data)
       setPrefs(restored.prefs)
       savePrefs(restored.prefs)
-      setInfo(`Restored ${restored.data.players.length} players from backup.`)
+      const n = Object.keys(restored.data.sources).length
+      setInfo(
+        `Restored ${restored.data.order.length} ranked players from backup` +
+          (n > 1 ? ` (${n} projection sets).` : '.'),
+      )
     } catch (err) {
       setError((err as Error).message)
     }
   }
 
   const clearNew = () => {
-    persist({ ...data, players: data.players.map((p) => ({ ...p, isNew: false })) })
+    const sources = Object.fromEntries(
+      Object.entries(data.sources).map(([id, s]) => [
+        id,
+        { ...s, players: s.players.map((p) => ({ ...p, isNew: false })) },
+      ]),
+    )
+    persist({ ...data, sources })
   }
 
   const resetDrafted = () => {
@@ -400,8 +499,9 @@ export default function App() {
         onResetDrafted={resetDrafted}
         onResetAll={resetAll}
         hasNew={hasNew}
-        sourceFile={data.sourceFile}
-        importedAt={data.importedAt}
+        sourceLabel={activeSource?.label ?? null}
+        sourceCount={activeSource?.players.length ?? 0}
+        onOpenSources={() => setSourcesOpen(true)}
       />
 
       {mock && (
@@ -433,7 +533,8 @@ export default function App() {
               Import projections (.xlsx)
             </button>
             <p className="empty__hint">
-              Already have a backup? Use <strong>⋯ → Import data</strong>.
+              Basketball Monster or Hashtag — both work. Already have a backup? Use{' '}
+              <strong>⋯ → Import data</strong>.
             </p>
           </div>
         ) : visible.length === 0 ? (
@@ -468,6 +569,22 @@ export default function App() {
           </DndContext>
         )}
       </main>
+
+      {sourcesOpen && (
+        <SourcesSheet
+          data={data}
+          busy={busy}
+          onSelect={selectSource}
+          onRefresh={refreshSource}
+          onLinkSheet={linkSheet}
+          onImportFile={() => {
+            setSourcesOpen(false)
+            xlsxInput.current?.click()
+          }}
+          onRemove={dropSource}
+          onClose={() => setSourcesOpen(false)}
+        />
+      )}
 
       {mockSetupOpen && (
         <MockSetup

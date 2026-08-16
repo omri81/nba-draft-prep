@@ -34,13 +34,27 @@ export interface Player {
   isNew?: boolean
 }
 
-export interface AppData {
+/** One projection set. Several can be loaded; exactly one is shown at a time. */
+export interface ProjectionSource {
+  id: string
+  label: string
   players: Player[]
-  /** Player ids, in my custom draft order. */
+  importedAt: number
+  sourceFile: string | null
+  /** Google Sheet share link, when this source can be refreshed from one. */
+  sheetUrl?: string
+}
+
+export interface AppData {
+  sources: Record<string, ProjectionSource>
+  /** Which projection set the board is currently showing. */
+  activeSourceId: string | null
+  /**
+   * Player ids in my custom draft order — the union across every source, and
+   * deliberately independent of them. Switching sources must never touch it.
+   */
   order: string[]
   drafted: string[]
-  importedAt: number | null
-  sourceFile: string | null
 }
 
 export interface DraftConfig {

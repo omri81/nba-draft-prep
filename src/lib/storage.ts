@@ -1,7 +1,10 @@
-import type { AppData, MockState, Player, Prefs } from '../types'
+import type { AppData, MockState, Player, Prefs, ProjectionSource } from '../types'
 
 const V = 'v1'
 export const KEYS = {
+  sources: `nbadp:${V}:sources`,
+  activeSource: `nbadp:${V}:activeSource`,
+  /** Pre-multi-source keys, still read once so an existing board migrates. */
   players: `nbadp:${V}:players`,
   order: `nbadp:${V}:order`,
   drafted: `nbadp:${V}:drafted`,
@@ -11,11 +14,10 @@ export const KEYS = {
 } as const
 
 export const EMPTY_DATA: AppData = {
-  players: [],
+  sources: {},
+  activeSourceId: null,
   order: [],
   drafted: [],
-  importedAt: null,
-  sourceFile: null,
 }
 
 export const DEFAULT_PREFS: Prefs = {
@@ -49,24 +51,54 @@ function write(key: string, value: unknown): void {
 }
 
 export function loadData(): AppData {
+  const order = read<string[]>(KEYS.order, [])
+  const drafted = read<string[]>(KEYS.drafted, [])
+  const sources = read<Record<string, ProjectionSource>>(KEYS.sources, {})
+
+  if (Object.keys(sources).length > 0) {
+    const activeSourceId = read<string | null>(KEYS.activeSource, null)
+    return {
+      sources,
+      activeSourceId: activeSourceId && sources[activeSourceId] ? activeSourceId : Object.keys(sources)[0],
+      order,
+      drafted,
+    }
+  }
+
+  // Migration from the single-source layout: fold the old players array into
+  // one source so an existing board survives the upgrade untouched.
+  const legacy = read<Player[]>(KEYS.players, [])
+  if (legacy.length === 0) return { ...EMPTY_DATA, order, drafted }
   const meta = read<{ importedAt: number | null; sourceFile: string | null }>(KEYS.meta, {
     importedAt: null,
     sourceFile: null,
   })
+  const id = /monster|bbm/i.test(meta.sourceFile ?? '') ? 'bbm' : 'custom'
   return {
-    players: read<Player[]>(KEYS.players, []),
-    order: read<string[]>(KEYS.order, []),
-    drafted: read<string[]>(KEYS.drafted, []),
-    importedAt: meta.importedAt ?? null,
-    sourceFile: meta.sourceFile ?? null,
+    sources: {
+      [id]: {
+        id,
+        label: id === 'bbm' ? 'Basketball Monster' : 'Projections',
+        players: legacy,
+        importedAt: meta.importedAt ?? Date.now(),
+        sourceFile: meta.sourceFile,
+      },
+    },
+    activeSourceId: id,
+    order,
+    drafted,
   }
 }
 
 export function saveData(data: AppData): void {
-  write(KEYS.players, data.players)
+  write(KEYS.sources, data.sources)
+  write(KEYS.activeSource, data.activeSourceId)
   write(KEYS.order, data.order)
   write(KEYS.drafted, data.drafted)
-  write(KEYS.meta, { importedAt: data.importedAt, sourceFile: data.sourceFile })
+}
+
+export function saveActiveSource(id: string | null): void {
+  write(KEYS.activeSource, id)
 }
 
 export function saveOrder(order: string[]): void {
@@ -112,38 +144,61 @@ export function clearAll(): void {
 }
 
 /**
- * Merge a freshly parsed sheet into existing state.
+ * Fold a freshly parsed sheet into one source.
  *
- * - Players already on the board keep their exact position in my custom order.
- * - Players in the new file I have not seen before are appended at the bottom
- *   and flagged `isNew`.
- * - Players that vanished from the new file drop off the board (their
- *   projections no longer exist), but their drafted flag is harmless if kept.
+ * - My custom order is never reordered. It is the union across sources, so a
+ *   player only in the *other* source keeps his slot.
+ * - Players this file introduces to the board are appended at the bottom and
+ *   flagged `isNew`.
+ * - Drafted flags are left alone entirely.
  */
-export function mergeImport(prev: AppData, incoming: Player[], fileName: string): AppData {
-  const incomingById = new Map(incoming.map((p) => [p.id, p]))
-  const knownIds = new Set(prev.players.map((p) => p.id))
-  const isFirstImport = prev.players.length === 0
+export function mergeSource(
+  prev: AppData,
+  incoming: Player[],
+  source: { id: string; label: string; sourceFile: string | null; sheetUrl?: string },
+): AppData {
+  const known = new Set(prev.order)
+  const isFirstEver = prev.order.length === 0
 
-  // Existing order, minus anyone no longer in the file.
-  const keptOrder = prev.order.filter((id) => incomingById.has(id))
-  const inOrder = new Set(keptOrder)
-
-  // Anything in the file that is not already placed, in the file's own order
-  // (Basketball Monster ships it sorted by value, which is a sane default).
-  const appended = incoming.map((p) => p.id).filter((id) => !inOrder.has(id))
-
+  const appended = incoming.map((p) => p.id).filter((id) => !known.has(id))
   const players = incoming.map((p) => ({
     ...p,
-    isNew: isFirstImport ? false : !knownIds.has(p.id),
+    isNew: isFirstEver ? false : !known.has(p.id),
   }))
 
+  const existing = prev.sources[source.id]
   return {
-    players,
-    order: [...keptOrder, ...appended],
-    drafted: prev.drafted.filter((id) => incomingById.has(id)),
-    importedAt: Date.now(),
-    sourceFile: fileName,
+    ...prev,
+    sources: {
+      ...prev.sources,
+      [source.id]: {
+        id: source.id,
+        label: source.label,
+        players,
+        importedAt: Date.now(),
+        sourceFile: source.sourceFile,
+        sheetUrl: source.sheetUrl ?? existing?.sheetUrl,
+      },
+    },
+    activeSourceId: source.id,
+    order: [...prev.order, ...appended],
+  }
+}
+
+export function setSheetUrl(prev: AppData, sourceId: string, sheetUrl: string | undefined): AppData {
+  const src = prev.sources[sourceId]
+  if (!src) return prev
+  return { ...prev, sources: { ...prev.sources, [sourceId]: { ...src, sheetUrl } } }
+}
+
+export function removeSource(prev: AppData, sourceId: string): AppData {
+  const sources = { ...prev.sources }
+  delete sources[sourceId]
+  const ids = Object.keys(sources)
+  return {
+    ...prev,
+    sources,
+    activeSourceId: prev.activeSourceId === sourceId ? (ids[0] ?? null) : prev.activeSourceId,
   }
 }
 
@@ -170,17 +225,30 @@ export function parseBackup(text: string): { data: AppData; prefs: Prefs } {
   if (json.app !== 'nba-draft-prep' || !json.data) {
     throw new Error('That is not a draft-prep backup file.')
   }
-  const d = json.data
-  if (!Array.isArray(d.players) || !Array.isArray(d.order)) {
-    throw new Error('Backup file is missing players or order.')
+  const d = json.data as Partial<AppData> & { players?: Player[]; sourceFile?: string | null }
+  if (!Array.isArray(d.order)) throw new Error('Backup file is missing the player order.')
+
+  // Backups written before multi-source support carry a flat players array.
+  let sources = d.sources
+  if (!sources || Object.keys(sources).length === 0) {
+    if (!Array.isArray(d.players)) throw new Error('Backup file has no projections in it.')
+    const id = /monster|bbm/i.test(d.sourceFile ?? '') ? 'bbm' : 'custom'
+    sources = {
+      [id]: {
+        id,
+        label: id === 'bbm' ? 'Basketball Monster' : 'Projections',
+        players: d.players,
+        importedAt: Date.now(),
+        sourceFile: d.sourceFile ?? null,
+      },
+    }
   }
   return {
     data: {
-      players: d.players,
+      sources,
+      activeSourceId: d.activeSourceId && sources[d.activeSourceId] ? d.activeSourceId : Object.keys(sources)[0],
       order: d.order,
       drafted: Array.isArray(d.drafted) ? d.drafted : [],
-      importedAt: d.importedAt ?? null,
-      sourceFile: d.sourceFile ?? null,
     },
     prefs: {
       ...DEFAULT_PREFS,
