@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react'
 import type { Player, StatKey } from '../types'
 import { CATEGORIES } from '../types'
 import { normalizeHeader } from '../lib/normalize'
+import { LAST_SEASON, lastSeasonFor } from '../lib/lastSeason'
 import { Headshot } from './Headshot'
 
 interface Props {
@@ -32,10 +33,34 @@ const TAGS: { key: string; label: string }[] = [
 const NOTE_KEYS = ['note', 'notes', 'comment', 'comments']
 
 function formatCat(key: StatKey, player: Player): string {
-  const v = player.stats[key]
+  return formatStat(key, player.stats[key])
+}
+
+function formatStat(key: StatKey, v: number | undefined): string {
   if (v === undefined) return '–'
   if (key === 'fgPct' || key === 'ftPct') return `${(v * 100).toFixed(1)}%`
   return v.toFixed(1)
+}
+
+/** Signed change from last season to the projection. */
+function formatDelta(key: StatKey, proj: number | undefined, was: number | undefined): string {
+  if (proj === undefined || was === undefined) return ''
+  const d = proj - was
+  const isPct = key === 'fgPct' || key === 'ftPct'
+  const shown = isPct ? Math.abs(d * 100).toFixed(1) : Math.abs(d).toFixed(1)
+  if (Number(shown) === 0) return '–'
+  return `${d > 0 ? '+' : '−'}${shown}${isPct ? '' : ''}`
+}
+
+/** Turnovers are the one category where the projection dropping is good news. */
+const LOWER_IS_BETTER = new Set<StatKey>(['to'])
+
+function deltaTone(key: StatKey, proj: number | undefined, was: number | undefined): string {
+  if (proj === undefined || was === undefined) return ''
+  const d = proj - was
+  if (Math.abs(d) < 0.05) return ''
+  const better = LOWER_IS_BETTER.has(key) ? d < 0 : d > 0
+  return better ? ' is-up' : ' is-down'
 }
 
 function subLabel(key: StatKey, player: Player): string | null {
@@ -143,6 +168,58 @@ export function PlayerDetail({ player, rank, drafted, onBack, onToggleDrafted }:
             )
           })}
         </div>
+
+        {(() => {
+          const last = lastSeasonFor(player.name)
+          if (!last) {
+            return (
+              <>
+                <h2 className="detail__h2">Last season · {LAST_SEASON}</h2>
+                <p className="sheet__note" style={{ marginTop: 0 }}>
+                  No regular-season games. Nothing to compare the projection against.
+                </p>
+              </>
+            )
+          }
+          return (
+            <>
+              <h2 className="detail__h2">
+                Projection vs {LAST_SEASON}
+                {last.team && <span className="detail__was"> · was {last.team}</span>}
+              </h2>
+              <div className="tablewrap">
+                <table className="compare">
+                  <thead>
+                    <tr>
+                      <th></th>
+                      <th>Proj</th>
+                      <th>{LAST_SEASON}</th>
+                      <th>Δ</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[{ key: 'gp' as StatKey, label: 'GP' }, { key: 'min' as StatKey, label: 'MPG' }, ...CATEGORIES].map(
+                      ({ key, label }) => {
+                        const proj = player.stats[key]
+                        const was = last.stats[key]
+                        return (
+                          <tr key={key}>
+                            <th scope="row">{label}</th>
+                            <td>{formatStat(key, proj)}</td>
+                            <td className="compare__was">{formatStat(key, was)}</td>
+                            <td className={`compare__d${deltaTone(key, proj, was)}`}>
+                              {formatDelta(key, proj, was)}
+                            </td>
+                          </tr>
+                        )
+                      },
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )
+        })()}
 
         {notes.length > 0 && (
           <>

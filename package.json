@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "deploy": "npm run build && gh-pages -d dist",
     "fetch-ids": "node scripts/fetch-player-ids.mjs",
-    "gen-icons": "node scripts/gen-icons.mjs"
+    "gen-icons": "node scripts/gen-icons.mjs",
+    "fetch-last-season": "node scripts/fetch-last-season.mjs"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

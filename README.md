@@ -101,6 +101,30 @@ never writes to it. Run as many as you like; the board is byte-identical
 afterwards, and your live drafted flags are untouched. It survives a reload, so
 locking your phone mid-mock doesn't lose it.
 
+## Last season on the player page
+
+Every player page shows the projection next to what he actually did last
+season, with the change per category — turnovers coloured inverted, since a
+lower projection there is good news. Players who missed the whole season say so
+rather than showing zeroes, which is its own signal.
+
+The data is baked in at build time:
+
+```bash
+npm run fetch-last-season          # most recently completed season
+npm run fetch-last-season 2024-25  # or name one
+```
+
+That writes `src/data/lastSeason.json` (~50 KB, 582 players) from the NBA's
+`leaguedashplayerstats` endpoint. It is **keyed by NBA player id**, the same id
+space as `playerIds.json`, so a player is matched name → id → last season with
+no second round of name normalization to disagree with the first.
+
+Baked rather than fetched live for three reasons: `stats.nba.com` wants
+browser-ish headers it will not honour cross-origin, the app has to work on
+draft night with no signal, and a local file cannot rate-limit you mid-draft.
+Re-run it once a season.
+
 ## Backups
 
 Safari can evict `localStorage`. **⋯ → Export data** downloads a JSON file with

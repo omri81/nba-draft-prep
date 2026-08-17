@@ -1408,3 +1408,61 @@ button {
 .row__stats:empty::after {
   content: '';
 }
+
+/* ---------- projection vs last season ---------- */
+
+.detail__was {
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--dimmer);
+}
+
+.compare {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.compare th,
+.compare td {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.compare thead th {
+  background: var(--surface-2);
+  color: var(--dimmer);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.compare tbody th {
+  text-align: left;
+  color: var(--dim);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.compare__was {
+  color: var(--dim);
+}
+
+.compare__d {
+  color: var(--dimmer);
+  width: 62px;
+}
+
+.compare__d.is-up {
+  color: var(--good);
+}
+
+.compare__d.is-down {
+  color: var(--bad);
+}
